@@ -24,7 +24,7 @@ cp .env.example .env
 | `DATABASE_URL` | SQLite file. Default `./data/jobs.db`. |
 | `DEEPSEEK_API_KEY` | Server-side key for scoring. Leave blank to collect jobs without AI scores. |
 | `DEEPSEEK_MODEL` | Default `deepseek-v4-flash`. Calls use non-thinking mode. |
-| `DEFAULT_MIN_SCORE` | Dashboard and CSV threshold. Default `75`. |
+| `DEFAULT_MIN_SCORE` | Dashboard and CSV threshold. Default `65`. |
 | `DEFAULT_MAX_RESULTS_PER_SOURCE` | Cap per source. Default `100`. |
 | `DEFAULT_POSTED_WITHIN_DAYS` | Default search window. |
 | `DEFAULT_MIN_MONTHLY_SALARY_INR` | Default salary floor. `50000` is ₹6,00,000 a year. |

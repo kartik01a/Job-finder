@@ -14,7 +14,7 @@ const db = getDatabase(env.DATABASE_URL);
 const repository = new JobRepository(db);
 const app = createApp({
   repository,
-  sources: createSources(),
+  sources: createSources(profile.currentLocation),
   ai: createDeepSeekClient({ apiKey: env.DEEPSEEK_API_KEY, model: env.DEEPSEEK_MODEL }),
   profile,
   env,

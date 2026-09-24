@@ -192,11 +192,12 @@ export function keywordToSlug(keyword: string): string {
     .replace(/^-|-$/g, "");
 }
 
-export function wellfoundRoleUrl(slug: string, location: string | null): string[] {
+export function wellfoundRoleUrl(slug: string, location: string | null, homeLocation?: string | null): string[] {
+  const scoped = location && location.toLowerCase() !== "any" ? keywordToSlug(location) : "";
+  const home = homeLocation ? keywordToSlug(homeLocation) : "";
+  if (scoped) return [`https://wellfound.com/role/l/${slug}/${scoped}`];
   const urls: string[] = [];
-  if (location && location.toLowerCase() !== "any") {
-    urls.push(`https://wellfound.com/role/l/${slug}/${keywordToSlug(location)}`);
-  }
+  if (home) urls.push(`https://wellfound.com/role/l/${slug}/${home}`);
   urls.push(`https://wellfound.com/role/${slug}`);
   return urls;
 }

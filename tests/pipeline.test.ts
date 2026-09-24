@@ -19,7 +19,7 @@ import { SearchOrchestrator } from "../server/services/search/orchestrator";
 import { createIndeedSource } from "../server/sources/indeed/IndeedSource";
 import { parseIndeedSearchHtml } from "../server/sources/indeed/parser";
 import type { JobSource } from "../server/sources/JobSource";
-import { extractWellfoundListings, parseWellfoundJobHtml } from "../server/sources/wellfound/parser";
+import { extractWellfoundListings, parseWellfoundJobHtml, wellfoundRoleUrl } from "../server/sources/wellfound/parser";
 import { descriptionHash } from "../server/services/text";
 import type { AiScore, SearchRequest } from "../shared/types";
 
@@ -80,7 +80,8 @@ function request(overrides: Partial<SearchRequest> = {}): SearchRequest {
     workModes: ["remote"],
     employmentTypes: ["full-time", "contract", "freelance"],
     postedWithinDays: 14,
-    minimumScore: 75,
+    minimumScore: 65,
+    maximumExperienceYears: 3,
     minimumMonthlySalaryInr: 50000,
     maxResultsPerSource: 100,
     keywords: ["Software Engineer"],
@@ -135,6 +136,28 @@ describe("location and work mode", () => {
     expect(rejectionReason(normalized({ workMode: "unknown" }), filters, new Date("2026-09-10"))).toBeNull();
     expect(rejectionReason(normalized({ employmentType: "internship" }), filters, new Date("2026-09-10"))).toBe("employment");
     expect(rejectionReason(normalized({ title: "Senior Staff Engineer" }), filters, new Date("2026-09-10"))).toBeNull();
+    expect(
+      rejectionReason(
+        normalized({ description: "Experience: 5+ years. Build React services." }),
+        filters,
+        new Date("2026-09-10"),
+      ),
+    ).toBe("experience");
+    expect(
+      rejectionReason(
+        normalized({ description: "Experience Required: 6–12 Years in Pune." }),
+        filters,
+        new Date("2026-09-10"),
+      ),
+    ).toBe("experience");
+    expect(
+      rejectionReason(
+        normalized({ description: "3+ years of experience with React and Node." }),
+        filters,
+        new Date("2026-09-10"),
+      ),
+    ).toBeNull();
+    expect(rejectionReason(normalized({ description: "Hands-on product role." }), filters, new Date("2026-09-10"))).toBeNull();
   });
 });
 
@@ -449,6 +472,16 @@ describe("source parsers", () => {
     expect(job?.salaryMin).toBe(120000);
     expect(job?.applyUrl).toBe("https://wellfound.com/jobs/4716782-software-engineer");
     expect(job?.description).toContain("React");
+  });
+
+  it("searches the India role page when location is India or unset", () => {
+    expect(wellfoundRoleUrl("full-stack-engineer", "India")).toEqual([
+      "https://wellfound.com/role/l/full-stack-engineer/india",
+    ]);
+    expect(wellfoundRoleUrl("full-stack-engineer", null, "India")).toEqual([
+      "https://wellfound.com/role/l/full-stack-engineer/india",
+      "https://wellfound.com/role/full-stack-engineer",
+    ]);
   });
 });
 

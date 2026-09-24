@@ -115,6 +115,7 @@ input, select {
 }
 .chip { background: #efe7da; }
 .secondary { background: #efe7da; }
+td .secondary { margin-left: 10px; }
 .find {
   margin-top: 16px;
   background: #0f6e56;

@@ -76,6 +76,7 @@ export const searchRequestSchema = z.object({
     .min(1),
   postedWithinDays: z.number().int().positive().nullable(),
   minimumScore: z.number().min(0).max(100),
+  maximumExperienceYears: z.number().nonnegative().nullable(),
   minimumMonthlySalaryInr: z.number().nonnegative(),
   maxResultsPerSource: z.number().int().positive().max(200),
   keywords: z.array(z.string().trim().min(1)).min(1).max(20),

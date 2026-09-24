@@ -1,9 +1,11 @@
 import type { EmploymentType, SearchRequest, WorkMode } from "../../../shared/types";
+import { extractRequiredYears } from "../scoring/deterministic";
 import { locationAllowed } from "./location";
 import { isExplicitlyBelowMinimum } from "../salary/parseSalary";
 
 export type FilterableJob = {
   title: string;
+  description: string;
   location: string | null;
   workMode: WorkMode;
   employmentType: EmploymentType;
@@ -12,11 +14,14 @@ export type FilterableJob = {
   salaryNormalizedInrMax: number | null;
 };
 
-export type FilterRejection = "work-mode" | "location" | "employment" | "posted-date" | "salary";
+export type FilterRejection = "work-mode" | "location" | "employment" | "posted-date" | "salary" | "experience";
 
 export function rejectionReason(
   job: FilterableJob,
-  request: Pick<SearchRequest, "location" | "workModes" | "employmentTypes" | "postedWithinDays" | "minimumMonthlySalaryInr">,
+  request: Pick<
+    SearchRequest,
+    "location" | "workModes" | "employmentTypes" | "postedWithinDays" | "minimumMonthlySalaryInr" | "maximumExperienceYears"
+  >,
   now: Date,
 ): FilterRejection | null {
   if (request.workModes && request.workModes.length > 0) {
@@ -34,6 +39,11 @@ export function rejectionReason(
   if (request.postedWithinDays != null && job.postedAt) {
     const ageMs = now.getTime() - job.postedAt.getTime();
     if (ageMs > request.postedWithinDays * 24 * 60 * 60 * 1000) return "posted-date";
+  }
+
+  if (request.maximumExperienceYears != null) {
+    const required = extractRequiredYears(`${job.title}\n${job.description}`);
+    if (required != null && required > request.maximumExperienceYears) return "experience";
   }
 
   if (

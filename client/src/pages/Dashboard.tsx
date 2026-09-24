@@ -24,6 +24,7 @@ type FormState = {
   employmentTypes: string[];
   postedWithinDays: number | null;
   minimumScore: number;
+  maximumExperienceYears: number | null;
   minimumMonthlySalaryInr: number;
   maxResultsPerSource: number;
   keywords: string[];
@@ -42,12 +43,15 @@ const EMPLOYMENT_OPTIONS = [
 export function Dashboard({ config }: { config: AppConfig }) {
   const [form, setForm] = useState<FormState>({
     sources: ["indeed", "wellfound"],
-    locationChoice: "Any",
+    locationChoice: (LOCATION_OPTIONS as readonly string[]).includes(config.profile.currentLocation)
+      ? config.profile.currentLocation
+      : "Any",
     customLocation: "",
     workMode: "all",
     employmentTypes: ["full-time", "contract", "freelance"],
     postedWithinDays: config.defaults.postedWithinDays,
     minimumScore: config.defaults.minimumScore,
+    maximumExperienceYears: config.profile.experienceYears,
     minimumMonthlySalaryInr: config.defaults.minimumMonthlySalaryInr,
     maxResultsPerSource: config.defaults.maxResultsPerSource,
     keywords: config.profile.preferredRoles,
@@ -58,11 +62,12 @@ export function Dashboard({ config }: { config: AppConfig }) {
   const [progress, setProgress] = useState<string[]>([]);
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [tableScore, setTableScore] = useState(String(config.defaults.minimumScore));
+  const [tableScore, setTableScore] = useState("");
   const [tableStatus, setTableStatus] = useState("");
   const [tableMode, setTableMode] = useState("");
   const [tableSource, setTableSource] = useState("");
   const [includeUnscored, setIncludeUnscored] = useState(false);
+  const [savedJobCount, setSavedJobCount] = useState(0);
 
   const filters = useMemo(() => {
     const params = new URLSearchParams();
@@ -84,6 +89,18 @@ export function Dashboard({ config }: { config: AppConfig }) {
     void refresh().catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "Could not load jobs"));
   }, [filters]);
 
+  useEffect(() => {
+    if (jobs.length > 0) {
+      setSavedJobCount(jobs.length);
+      return;
+    }
+    const params = new URLSearchParams();
+    params.set("includeUnscored", "true");
+    void getJobs(params)
+      .then((result) => setSavedJobCount(result.jobs.length))
+      .catch(() => setSavedJobCount(0));
+  }, [jobs]);
+
   async function findJobs() {
     setError(null);
     setSearching(true);
@@ -103,6 +120,7 @@ export function Dashboard({ config }: { config: AppConfig }) {
         employmentTypes: form.employmentTypes,
         postedWithinDays: form.postedWithinDays,
         minimumScore: form.minimumScore,
+        maximumExperienceYears: form.maximumExperienceYears,
         minimumMonthlySalaryInr: form.minimumMonthlySalaryInr,
         maxResultsPerSource: form.maxResultsPerSource,
         keywords: form.keywords,
@@ -262,6 +280,21 @@ export function Dashboard({ config }: { config: AppConfig }) {
             />
           </label>
           <label>
+            Max experience (years)
+            <input
+              type="number"
+              min={0}
+              value={form.maximumExperienceYears ?? ""}
+              placeholder="Any"
+              onChange={(event) =>
+                setForm({
+                  ...form,
+                  maximumExperienceYears: event.target.value === "" ? null : Number(event.target.value),
+                })
+              }
+            />
+          </label>
+          <label>
             Minimum monthly salary (INR)
             <input
               type="number"
@@ -397,7 +430,23 @@ export function Dashboard({ config }: { config: AppConfig }) {
             <tbody>
               {jobs.length === 0 && (
                 <tr>
-                  <td colSpan={7}>No jobs match these filters.</td>
+                  <td colSpan={7}>
+                    {savedJobCount > 0
+                      ? `${savedJobCount} saved jobs are hidden because none scored ${tableScore || "the minimum"} or above.`
+                      : "No jobs match these filters."}
+                    {savedJobCount > 0 && (
+                      <button
+                        type="button"
+                        className="secondary"
+                        onClick={() => {
+                          setTableScore("");
+                          setIncludeUnscored(true);
+                        }}
+                      >
+                        Show saved jobs
+                      </button>
+                    )}
+                  </td>
                 </tr>
               )}
               {jobs.map((job) => (

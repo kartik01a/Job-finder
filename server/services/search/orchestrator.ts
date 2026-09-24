@@ -9,7 +9,7 @@ import type { JobSource } from "../../sources/JobSource";
 import { consecutiveMisses, shouldClose } from "../closedJobs/closedJobs";
 import { jobsToCsv, writeJobsCsv } from "../csv/exportCsv";
 import { DeduplicationService, type NormalizedJob } from "../deduplication/DeduplicationService";
-import { applyHardFilters } from "../filters/hardFilters";
+import { applyHardFilters, rejectionReason, type FilterRejection } from "../filters/hardFilters";
 import { locationAllowed } from "../filters/location";
 import { JobRepository, type ExistingJob } from "../jobs/repository";
 import { normalizeJob } from "../normalization/normalize";
@@ -60,7 +60,7 @@ export class SearchOrchestrator {
               runId,
               message: result.error.reason,
             });
-            onProgress(`${this.label(source.name)}: ${result.error.status}`);
+            onProgress(`${this.label(source.name)}: ${result.error.status}. ${result.error.reason}`);
             continue;
           }
           filters.successfulSources.push(source.name);
@@ -78,6 +78,8 @@ export class SearchOrchestrator {
       onProgress(`${collected.length} discovered`);
       const filtered = applyHardFilters(collected, request, started);
       onProgress(`${filtered.length} passed filters`);
+      const removed = filterRemovalSummary(collected, request, started);
+      if (removed) onProgress(removed);
       const deduped = this.dedupe.dedupe(filtered);
       const duplicatesRemoved = filtered.length - deduped.length;
       onProgress(`${duplicatesRemoved} duplicates removed`);
@@ -287,6 +289,28 @@ export class SearchOrchestrator {
   private label(name: string): string {
     return SOURCE_LABELS[name as SourceName] ?? name;
   }
+}
+
+const FILTER_LABELS: Record<FilterRejection, string> = {
+  "posted-date": "older than the posted-within window",
+  location: "outside the chosen location",
+  salary: "salary below the minimum",
+  experience: "asked for more experience than the limit",
+  "work-mode": "work mode did not match",
+  employment: "employment type did not match",
+};
+
+function filterRemovalSummary(jobs: NormalizedJob[], request: SearchRequest, now: Date): string | null {
+  const counts = new Map<FilterRejection, number>();
+  for (const job of jobs) {
+    const reason = rejectionReason(job, request, now);
+    if (!reason) continue;
+    counts.set(reason, (counts.get(reason) ?? 0) + 1);
+  }
+  if (counts.size === 0) return null;
+  const total = [...counts.values()].reduce((sum, count) => sum + count, 0);
+  const parts = [...counts.entries()].map(([reason, count]) => `${count} ${FILTER_LABELS[reason]}`);
+  return `${total} removed: ${parts.join(", ")}`;
 }
 
 function keywordCouldFind(title: string, keywords: string[]): boolean {
