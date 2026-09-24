@@ -16,9 +16,9 @@ import { normalizeJob, type RawJob } from "../server/services/normalization/norm
 import { isExplicitlyBelowMinimum, parseSalary } from "../server/services/salary/parseSalary";
 import { deterministicScore, skillPresent } from "../server/services/scoring/deterministic";
 import { SearchOrchestrator } from "../server/services/search/orchestrator";
-import { createIndeedSource } from "../server/sources/indeed/IndeedSource";
-import { parseIndeedSearchHtml } from "../server/sources/indeed/parser";
 import type { JobSource } from "../server/sources/JobSource";
+import { parseHiristJobs } from "../server/sources/hirist/parser";
+import { instahyreFunctionIds, parseInstahyreJobs } from "../server/sources/instahyre/parser";
 import { extractWellfoundListings, parseWellfoundJobHtml, wellfoundRoleUrl } from "../server/sources/wellfound/parser";
 import { descriptionHash } from "../server/services/text";
 import type { AiScore, SearchRequest } from "../shared/types";
@@ -365,10 +365,10 @@ describe("status, closure, and orchestration", () => {
   it("keeps going when one source or the model fails", async () => {
     const db = openDatabase(":memory:");
     const repository = new JobRepository(db);
-    const indeed: JobSource = {
-      name: "indeed",
+    const hirist: JobSource = {
+      name: "hirist",
       async search() {
-        return { jobs: [], error: { source: "indeed", status: "unavailable", reason: "blocked" } };
+        return { jobs: [], error: { source: "hirist", status: "unavailable", reason: "blocked" } };
       },
     };
     const wellfound: JobSource = {
@@ -379,14 +379,14 @@ describe("status, closure, and orchestration", () => {
     };
     const orchestrator = new SearchOrchestrator({
       repository,
-      sources: [indeed, wellfound],
+      sources: [hirist, wellfound],
       profile,
       env,
       csvPath: path.join(os.tmpdir(), `jobs-fail-${Date.now()}.csv`),
       ai: { async score() { return { ok: false, reason: "DeepSeek score was not JSON" }; } },
     });
     const search = request({
-      sources: ["indeed", "wellfound"],
+      sources: ["hirist", "wellfound"],
       location: null,
       workModes: null,
       postedWithinDays: null,
@@ -404,48 +404,12 @@ describe("status, closure, and orchestration", () => {
     expect(jobs).toHaveLength(1);
     expect(jobs[0]?.score).toBeNull();
     expect(jobs[0]?.deterministicScore).toBeGreaterThan(0);
-    expect(lines.some((line) => line.includes("Indeed: unavailable"))).toBe(true);
+    expect(lines.some((line) => line.includes("Hirist: unavailable"))).toBe(true);
     expect(lines.some((line) => line.includes("Complete"))).toBe(true);
   });
 });
 
 describe("source parsers", () => {
-  it("reads a public indeed card and stops on an access challenge", async () => {
-    const html = `
-      <div data-jk="abc123">
-        <h2 class="jobTitle"><a href="/viewjob?jk=abc123">Software Engineer</a></h2>
-        <span data-testid="company-name">Acme</span>
-        <div data-testid="text-location">Remote — India</div>
-        <div class="salary-snippet">₹50,000 a month</div>
-        <div class="job-snippet">React and TypeScript</div>
-        <span class="date">2 days ago</span>
-      </div>`;
-    const jobs = parseIndeedSearchHtml(html, new Date("2026-09-20T00:00:00Z"));
-    expect(jobs[0]?.company).toBe("Acme");
-    expect(jobs[0]?.jobUrl).toContain("jk=abc123");
-
-    const source = createIndeedSource({
-      delayMs: 0,
-      sleepImpl: async () => undefined,
-      fetchImpl: async () => ({ status: 403, url: "https://www.indeed.com/jobs", text: "Just a moment captcha" }),
-    });
-    const result = await source.search(request({ sources: ["indeed"] }));
-    expect(result.error?.status).toBe("unavailable");
-    expect(result.jobs).toHaveLength(0);
-
-    const listed = createIndeedSource({
-      delayMs: 0,
-      sleepImpl: async () => undefined,
-      fetchImpl: async () => ({
-        status: 200,
-        url: "https://wellfound.com/role/l/software-engineer/india",
-        text: "<html><head><script>cf-mitigated</script></head><body><a href=\"/jobs/1-software-engineer\">Engineer</a></body></html>",
-      }),
-    });
-    const openPage = await listed.search(request({ sources: ["indeed"], keywords: ["Software Engineer"], maxResultsPerSource: 1 }));
-    expect(openPage.error).toBeNull();
-  });
-
   it("reads wellfound listing hints and job posting json-ld", () => {
     const html = `
       <div data-testid="startup-header"><h2 class="inline">Boom</h2></div>
@@ -482,6 +446,41 @@ describe("source parsers", () => {
       "https://wellfound.com/role/l/full-stack-engineer/india",
       "https://wellfound.com/role/full-stack-engineer",
     ]);
+  });
+
+  it("reads Instahyre and Hirist search JSON", () => {
+    expect(instahyreFunctionIds(["Full Stack Engineer", "Backend Engineer"])).toEqual([1, 10]);
+    const instahyre = parseInstahyreJobs({
+      objects: [
+        {
+          id: 42,
+          title: "Full Stack Engineer",
+          locations: "Bangalore",
+          keywords: ["React", "Node.js"],
+          public_url: "https://www.instahyre.com/job-42",
+          employer: { company_name: "Acme", instahyre_note: "Product company." },
+        },
+      ],
+    });
+    expect(instahyre[0]?.company).toBe("Acme");
+    expect(instahyre[0]?.applyUrl).toBe("https://www.instahyre.com/job-42");
+    const hirist = parseHiristJobs({
+      data: [
+        {
+          id: 7,
+          title: "Full Stack Engineer",
+          min: 5,
+          max: 8,
+          jobDetailUrl: "https://www.hirist.tech/j/full-stack-engineer-7",
+          locations: [{ name: "Pune" }],
+          companyData: { companyName: "AHEAD" },
+          tags: [{ name: "React" }],
+        },
+      ],
+    });
+    expect(hirist[0]?.company).toBe("AHEAD");
+    expect(hirist[0]?.description).toContain("Experience: 5-8 years");
+    expect(rejectionReason(normalizeJob(hirist[0]!, 90), request(), new Date("2026-09-24"))).toBe("experience");
   });
 });
 

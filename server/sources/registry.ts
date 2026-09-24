@@ -1,7 +1,8 @@
-import { createIndeedSource } from "./indeed/IndeedSource";
+import { createHiristSource } from "./hirist/HiristSource";
+import { createInstahyreSource } from "./instahyre/InstahyreSource";
 import { createWellfoundSource } from "./wellfound/WellfoundSource";
 import type { JobSource } from "./JobSource";
 
 export function createSources(homeLocation?: string | null): JobSource[] {
-  return [createIndeedSource(), createWellfoundSource({ homeLocation })];
+  return [createWellfoundSource({ homeLocation }), createInstahyreSource(), createHiristSource()];
 }

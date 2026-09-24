@@ -67,7 +67,7 @@ The Apply link opens `applyUrl` in a new tab. The app does not fill forms or sub
 Adapters live in `server/sources`. The orchestrator does not contain source-specific parsing.
 
 - **Wellfound.** Public role pages such as `/role/l/software-engineer/india` and public job pages. `robots.txt` allows these paths and disallows `/search`, so keyword search is not scraped. Requests are sequential and paced. If a role page does not exist, that keyword is skipped.
-- **Indeed.** There is no open job-search API. RSS and `/viewjob` are disallowed by Indeed's robots file, and the public search page currently returns a bot challenge. This app makes one ordinary request and, when it sees a challenge, reports Indeed as unavailable. It does not solve CAPTCHAs, use stealth browsers, or rotate proxies. If Indeed later returns a normal results page, the parser reads the cards that are already in that HTML. Individual Indeed job pages are not fetched.
+- **Instahyre and Hirist.** Public job JSON used by those sites, with no login. Listings are filtered with the same rules as Wellfound.
 
 A failed source does not cancel the other sources.
 
@@ -87,7 +87,6 @@ Do not add a source by bypassing its access controls.
 
 ## Troubleshooting
 
-- **Indeed: unavailable.** Expected unless Indeed returns a public results page without a challenge. Use Wellfound, or bring an authorized integration. Do not add bypass tooling.
 - **No rows in the table.** The default filter is the minimum score. Jobs without a DeepSeek score are hidden until you check "Include unscored" or set `DEEPSEEK_API_KEY`.
 - **DeepSeek errors.** The run still keeps the collected jobs and their deterministic scores. Invalid model output is retried once, then marked failed.
 - **Port in use.** Change `PORT` and restart. The Vite dev server proxies `/api` to that port.

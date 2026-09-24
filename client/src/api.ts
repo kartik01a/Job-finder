@@ -1,4 +1,4 @@
-import type { ApplicationStatus } from "../../shared/types";
+import type { ApplicationStatus, SourceName } from "../../shared/types";
 
 export type AppConfig = {
   defaults: {
@@ -14,7 +14,7 @@ export type AppConfig = {
     skills: Record<string, number>;
     preferredRoles: string[];
   };
-  sources: Array<{ id: "indeed" | "wellfound"; label: string }>;
+  sources: Array<{ id: SourceName; label: string }>;
   aiConfigured: boolean;
 };
 

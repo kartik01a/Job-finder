@@ -1,11 +1,12 @@
 import { z } from "zod";
 
-export const SOURCES = ["indeed", "wellfound"] as const;
+export const SOURCES = ["wellfound", "instahyre", "hirist"] as const;
 export type SourceName = (typeof SOURCES)[number];
 
 export const SOURCE_LABELS: Record<SourceName, string> = {
-  indeed: "Indeed",
   wellfound: "Wellfound",
+  instahyre: "Instahyre",
+  hirist: "Hirist",
 };
 
 export const APPLICATION_STATUSES = [

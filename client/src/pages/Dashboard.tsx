@@ -4,6 +4,7 @@ import {
   LOCATION_OPTIONS,
   POSTED_WITHIN_OPTIONS,
   type ApplicationStatus,
+  type SourceName,
 } from "../../../shared/types";
 import {
   getJobs,
@@ -17,7 +18,7 @@ import {
 } from "../api";
 
 type FormState = {
-  sources: Array<"indeed" | "wellfound">;
+  sources: SourceName[];
   locationChoice: string;
   customLocation: string;
   workMode: "all" | "remote" | "onsite" | "hybrid";
@@ -42,7 +43,7 @@ const EMPLOYMENT_OPTIONS = [
 
 export function Dashboard({ config }: { config: AppConfig }) {
   const [form, setForm] = useState<FormState>({
-    sources: ["indeed", "wellfound"],
+    sources: config.sources.map((source) => source.id),
     locationChoice: (LOCATION_OPTIONS as readonly string[]).includes(config.profile.currentLocation)
       ? config.profile.currentLocation
       : "Any",
@@ -140,7 +141,7 @@ export function Dashboard({ config }: { config: AppConfig }) {
     }
   }
 
-  function toggleSource(id: "indeed" | "wellfound") {
+  function toggleSource(id: SourceName) {
     setForm((current) => {
       const sources = current.sources.includes(id)
         ? current.sources.filter((source) => source !== id)
@@ -401,8 +402,11 @@ export function Dashboard({ config }: { config: AppConfig }) {
             Source
             <select value={tableSource} onChange={(event) => setTableSource(event.target.value)}>
               <option value="">Any</option>
-              <option value="indeed">indeed</option>
-              <option value="wellfound">wellfound</option>
+              {config.sources.map((source) => (
+                <option key={source.id} value={source.id}>
+                  {source.id}
+                </option>
+              ))}
             </select>
           </label>
           <label className="check">
