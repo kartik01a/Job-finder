@@ -1,0 +1,32 @@
+{
+  "profileVersion": 1,
+  "experienceYears": 3,
+  "currentLocation": "India",
+  "skills": {
+    "React": 5,
+    "Next.js": 5,
+    "TypeScript": 5,
+    "Node.js": 5,
+    "Express.js": 4,
+    "MongoDB": 4,
+    "PostgreSQL": 4,
+    "AWS": 4,
+    "React Native": 3,
+    "REST APIs": 5,
+    "Git": 5,
+    "Docker": 2,
+    "Tailwind CSS": 3,
+    "Redux": 3
+  },
+  "preferredRoles": [
+    "Full Stack Engineer",
+    "Full Stack Developer",
+    "Software Engineer",
+    "Product Engineer",
+    "Founding Engineer",
+    "Frontend Engineer",
+    "Backend Engineer",
+    "React Developer",
+    "Next.js Developer"
+  ]
+}
